@@ -27,10 +27,14 @@ func getASF(dir string) (a asf, err error) {
 	return a, err
 }
 
+func ErrNotExists(pkgName string) error {
+	return fmt.Errorf("package %s don't exist", pkgName)
+}
+
 func (a asf) parseAsDefGraph(pkgName string) (*defGraph, error) {
 	pkg, ok := a.pkgs[pkgName]
 	if !ok {
-		return nil, fmt.Errorf("package %s don't exist", pkgName)
+		return nil, ErrNotExists(pkgName)
 	}
 	g := newDefGraph()
 	for name, f := range pkg.Files {
@@ -51,6 +55,17 @@ func (a asf) WriteToPackedCode(w io.Writer, pkgName string, members []string) (e
 		return err
 	}
 	return format.Node(w, a.fst, decls)
+}
+
+func (a asf) packageFiles(pkgName string) (files []string, err error) {
+	pkg, ok := a.pkgs[pkgName]
+	if !ok {
+		return nil, ErrNotExists(pkgName)
+	}
+	for name := range pkg.Files {
+		files = append(files, name)
+	}
+	return files, nil
 }
 
 func (a asf) packedDecls(pkgName string, files []string) (output []ast.Decl) {
