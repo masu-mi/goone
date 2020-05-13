@@ -9,7 +9,6 @@ import (
 )
 
 func NewPackCommand() *cobra.Command {
-
 	var pkgName string
 	var outputFile string
 
@@ -43,7 +42,11 @@ func NewPackCommand() *cobra.Command {
 				}
 				defer w.Close()
 			}
-			return a.WriteToPackedCode(w, pkgName, members)
+			pc, e := a.PackedCode(pkgName, members)
+			if e != nil {
+				return e
+			}
+			return ExecutePackedCode(w, dt, pc)
 		},
 	}
 	cmd.PersistentFlags().StringVarP(&outputFile, "out", "o", "", "output file path (default: stdout)")

@@ -54,7 +54,11 @@ func NewGenerateTemplates() *cobra.Command {
 						}
 						defer w.Close()
 					}
-					if e = a.WriteToPackedCode(w, pkgName, members); e != nil {
+					pc, e := a.PackedCode(pkgName, members)
+					if e != nil {
+						return e
+					}
+					if e = ExecutePackedCode(w, dt, pc); e != nil {
 						return e
 					}
 					return nil

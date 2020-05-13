@@ -6,7 +6,7 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
-	"io"
+	"strings"
 )
 
 type asf struct { // abstruct syntax forest!!
@@ -48,13 +48,23 @@ func (a asf) ParseAsDefGraph(pkgName string) (*defGraph, error) {
 	return g, nil
 }
 
-func (a asf) WriteToPackedCode(w io.Writer, pkgName string, members []string) (err error) {
-	decls := a.PackedDecls(pkgName, members)
-	_, err = fmt.Fprintf(w, "// packed from %v with goone.\n\n", members)
+func (a asf) PackedCode(pkgName string, members []string) (pc PackedCode, err error) {
+	decls, imports := a.PackedDecls(pkgName, members)
+	var bd, bi strings.Builder
+	err = format.Node(&bd, a.fst, decls)
 	if err != nil {
-		return err
+		return pc, err
 	}
-	return format.Node(w, a.fst, decls)
+	err = format.Node(&bi, a.fst, imports)
+	if err != nil {
+		return pc, err
+	}
+	return PackedCode{
+		Package:  pkgName,
+		SrcFiles: fmt.Sprintf("%v", members),
+		Imports:  bi.String(),
+		Decls:    bd.String(),
+	}, nil
 }
 
 func (a asf) PackageFiles(pkgName string) (files []string, err error) {
@@ -68,13 +78,16 @@ func (a asf) PackageFiles(pkgName string) (files []string, err error) {
 	return files, nil
 }
 
-func (a asf) PackedDecls(pkgName string, files []string) (output []ast.Decl) {
+func (a asf) PackedDecls(pkgName string, files []string) (defs []ast.Decl, imports *ast.GenDecl) {
+	imports = &ast.GenDecl{
+		Tok: token.IMPORT,
+	}
 	for _, m := range files {
 		f, ok := a.pkgs[pkgName].Files[m]
 		if !ok {
 			continue
 		}
-		appendDecls(&output, f.Decls)
+		appendDecls(&defs, imports, f.Decls)
 	}
 	return
 }
@@ -105,15 +118,20 @@ func definitions(f *ast.File) (defs []definition) {
 	return defs
 }
 
-func appendDecls(base *[]ast.Decl, items []ast.Decl) {
+func appendDecls(base *[]ast.Decl, imports *ast.GenDecl, items []ast.Decl) {
 	b := *base
+	defer func() {
+		*base = b
+	}()
 	for _, d := range items {
 		if gd, ok := d.(*ast.GenDecl); ok {
 			if gd.Tok == token.IMPORT {
+				for _, i := range gd.Specs {
+					imports.Specs = append(imports.Specs, i)
+				}
 				continue
 			}
 		}
 		b = append(b, d)
 	}
-	*base = b
 }
