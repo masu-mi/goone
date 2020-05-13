@@ -25,8 +25,7 @@ Available Commands:
   pack        Pack target source code file with depended files share the package name into single file
 
 Flags:
-  -h, --help      help for goone
-  -v, --verbose   enable verbose log
+  -h, --help   help for goone
 
 Use "goone [command] --help" for more information about a command.
 ```

@@ -21,15 +21,10 @@ func run() error {
 }
 
 func newCommand() *cobra.Command {
-	var (
-		flagVerbose bool
-	)
-
 	c := &cobra.Command{Use: "goone"}
 	c.AddCommand(
 		cmd.NewPackCommand(),
 		cmd.NewGenerateTemplates(),
 	)
-	c.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "enable verbose log")
 	return c
 }
