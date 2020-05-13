@@ -1,4 +1,4 @@
-package main
+package model
 
 import "path"
 
@@ -7,7 +7,7 @@ type defGraph struct {
 	defs map[string]map[int]string // ident -> file
 }
 
-func newDefGraph() *defGraph {
+func NewDefGraph() *defGraph {
 	return &defGraph{
 		refs: make(map[string][]string),
 		defs: make(map[string]map[int]string),
@@ -44,7 +44,7 @@ func (g *defGraph) dependedFiles(file string) chan string {
 	return ch
 }
 
-func reachableFiles(g *defGraph, start string) (member []string) {
+func ReachableFiles(g *defGraph, start string) (member []string) {
 	start = path.Clean(start)
 	visited := newSet()
 	visited.add(start)
