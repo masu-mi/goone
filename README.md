@@ -43,7 +43,7 @@ goone gen ./         --package main -o ./generated -p snip-compe-
 You can set template file path in config.toml like this.
 
 ```toml
-templatedirfile = "/Users/masumi/.config/goone/template.go"
+templatefile = "/Users/masumi/.config/goone/template.go"
 ```
 
 Template is required to match go's text/template format like this.

@@ -16,7 +16,7 @@ const cmdName = "goone"
 
 type config struct {
 	confPath     string
-	TemplateFile string `toml:"templatedirfile"`
+	TemplateFile string `toml:"templatefile"`
 }
 
 const defaultTemplate = `
