@@ -2,19 +2,46 @@ package model
 
 import "path"
 
+type DefGraph struct {
+	defGraph
+
+	Package string
+	ASF     *ASF
+}
+
 type defGraph struct {
 	refs map[string][]string       // file -> ident
 	defs map[string]map[int]string // ident -> file
 }
 
-func NewDefGraph() *defGraph {
-	return &defGraph{
-		refs: make(map[string][]string),
-		defs: make(map[string]map[int]string),
+func NewDefGraph() *DefGraph {
+	return &DefGraph{
+		defGraph: defGraph{
+			refs: make(map[string][]string),
+			defs: make(map[string]map[int]string),
+		},
 	}
 }
 
-func (g *defGraph) addDef(file string, ident definition) {
+func GenDefGraphFromASF(a *ASF, pkgName string) (*DefGraph, error) {
+	pkg, ok := a.pkgs[pkgName]
+	if !ok {
+		return nil, ErrNotExists(pkgName)
+	}
+	g := NewDefGraph()
+	g.ASF = a
+	for name, f := range pkg.Files {
+		for _, d := range definitions(f) {
+			g.addDef(name, d)
+		}
+		for _, u := range f.Unresolved {
+			g.addRef(name, u.Name)
+		}
+	}
+	return g, nil
+}
+
+func (g *DefGraph) addDef(file string, ident definition) {
 	m, ok := g.defs[ident.name]
 	if !ok {
 		m = map[int]string{}
@@ -23,11 +50,11 @@ func (g *defGraph) addDef(file string, ident definition) {
 	g.defs[ident.name] = m
 }
 
-func (g *defGraph) addRef(file, ident string) {
+func (g *DefGraph) addRef(file, ident string) {
 	g.refs[file] = append(g.refs[file], ident)
 }
 
-func (g *defGraph) dependedFiles(file string) chan string {
+func (g *DefGraph) dependedFiles(file string) chan string {
 	ch := make(chan string)
 	go func() {
 		defer close(ch)
@@ -44,14 +71,14 @@ func (g *defGraph) dependedFiles(file string) chan string {
 	return ch
 }
 
-func ReachableFiles(g *defGraph, start string) (member []string) {
+func ReachableFiles(g *DefGraph, start string) (member []string) {
 	start = path.Clean(start)
 	visited := newSet()
 	visited.add(start)
 	_dfs(visited, g, start)
 	return visited.members()
 }
-func _dfs(visited set, g *defGraph, cur string) {
+func _dfs(visited set, g *DefGraph, cur string) {
 	for f := range g.dependedFiles(cur) {
 		if visited.doesContain(f) {
 			continue

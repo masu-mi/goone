@@ -9,14 +9,14 @@ import (
 	"strings"
 )
 
-type asf struct { // abstruct syntax forest!!
+type ASF struct { // abstruct syntax forest!!
 	dir  string
 	fst  *token.FileSet
 	pkgs map[string]*ast.Package
 }
 
-func GetASF(dir string) (a asf, err error) {
-	a = asf{
+func GetASF(dir string) (a *ASF, err error) {
+	a = &ASF{
 		dir: dir,
 		fst: token.NewFileSet(),
 	}
@@ -31,24 +31,7 @@ func ErrNotExists(pkgName string) error {
 	return fmt.Errorf("package %s don't exist", pkgName)
 }
 
-func (a asf) ParseAsDefGraph(pkgName string) (*defGraph, error) {
-	pkg, ok := a.pkgs[pkgName]
-	if !ok {
-		return nil, ErrNotExists(pkgName)
-	}
-	g := NewDefGraph()
-	for name, f := range pkg.Files {
-		for _, d := range definitions(f) {
-			g.addDef(name, d)
-		}
-		for _, u := range f.Unresolved {
-			g.addRef(name, u.Name)
-		}
-	}
-	return g, nil
-}
-
-func (a asf) PackedCode(pkgName string, members []string) (pc PackedCode, err error) {
+func (a *ASF) PackedCode(pkgName string, members []string) (pc PackedCode, err error) {
 	decls, imports := a.PackedDecls(pkgName, members)
 	var bd, bi strings.Builder
 	err = format.Node(&bd, a.fst, decls)
@@ -67,7 +50,7 @@ func (a asf) PackedCode(pkgName string, members []string) (pc PackedCode, err er
 	}, nil
 }
 
-func (a asf) PackageFiles(pkgName string) (files []string, err error) {
+func (a *ASF) PackageFiles(pkgName string) (files []string, err error) {
 	pkg, ok := a.pkgs[pkgName]
 	if !ok {
 		return nil, ErrNotExists(pkgName)
@@ -78,7 +61,7 @@ func (a asf) PackageFiles(pkgName string) (files []string, err error) {
 	return files, nil
 }
 
-func (a asf) PackedDecls(pkgName string, files []string) (defs []ast.Decl, imports *ast.GenDecl) {
+func (a *ASF) PackedDecls(pkgName string, files []string) (defs []ast.Decl, imports *ast.GenDecl) {
 	imports = &ast.GenDecl{
 		Tok: token.IMPORT,
 	}

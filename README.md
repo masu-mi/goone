@@ -25,7 +25,8 @@ Available Commands:
   pack        Pack target source code file with depended files share the package name into single file
 
 Flags:
-  -h, --help   help for goone
+  -c, --config string   config file path (default: ~/.config/goone/config.toml)
+  -h, --help            help for goone
 
 Use "goone [command] --help" for more information about a command.
 ```
@@ -36,6 +37,28 @@ Use "goone [command] --help" for more information about a command.
 goone pack ./main.go --package main -o ./example_out.go
 goone gen ./         --package main -o ./generated -p snip-compe-
 ```
+
+### Switch template
+
+You can set template file path in config.toml like this.
+
+```toml
+templatedirfile = "/Users/masumi/.config/goone/template.go"
+```
+
+Template is required to match go's text/template format like this.
+
+```
+package {{ .Package }}
+// packed from {{ .SrcFiles }} with goone.
+// {{"{{_cursor_}}"}}
+
+{{ .Imports }}
+
+{{ .Decls }}
+```
+
+Usable attributes are [here](https://github.com/masu-mi/goone/blob/master/model/packed_code.go).
 
 
 ## License

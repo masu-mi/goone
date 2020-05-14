@@ -2,67 +2,46 @@ package cmd
 
 import (
 	"os"
-	"path"
 	"strings"
 
-	"github.com/masu-mi/goone/model"
 	"github.com/spf13/cobra"
 )
 
 func NewGenerateTemplates() *cobra.Command {
-	var pkgName string
 	var outputDir string
 	var prefix string
+	var templatePath string
 	var includeTest bool
 
 	cmd := &cobra.Command{
 		Use:   "gen",
 		Short: "Generate Packed source files",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(_ *cobra.Command, args []string) error {
-			// use case
-			filePath := args[0]
-			dir := path.Dir(filePath)
-			a, err := model.GetASF(dir)
+		RunE: func(c *cobra.Command, args []string) error {
+			_, dir, pkgName := targetLocation(c, args)
+
+			cfg := &config{}
+			cfg.load(c.Flag("config").Value.String())
+			t, err := cfg.NewTemplate(templatePath)
 			if err != nil {
 				return err
 			}
-			if pkgName == "" {
-				pkgName = path.Base(dir)
-			}
-			g, err := a.ParseAsDefGraph(pkgName)
+
+			a, g, err := targetStructure(dir, pkgName)
 			if err != nil {
 				return err
 			}
+
 			fs, err := a.PackageFiles(pkgName)
 			if err != nil {
 				return err
 			}
-			os.MkdirAll(outputDir, os.ModeDir|0755)
-			for _, filePath := range fs {
-				if !includeTest && strings.HasSuffix(filePath, "_test.go") {
-					continue
-				}
-				e := func() (e error) {
-					members := model.ReachableFiles(g, filePath)
-
-					w := os.Stdout
-					if outputDir != "" {
-						w, e = os.Create(outputFilePath(outputDir, prefix, filePath))
-						if e != nil {
-							return e
-						}
-						defer w.Close()
-					}
-					pc, e := a.PackedCode(pkgName, members)
-					if e != nil {
-						return e
-					}
-					if e = ExecutePackedCode(w, dt, pc); e != nil {
-						return e
-					}
-					return nil
-				}()
+			if outputDir != "" {
+				os.MkdirAll(outputDir, os.ModeDir|0755)
+			}
+			for src := range targetFiles(fs, includeTest) {
+				dstFile := outputFilePath(outputDir, prefix, src)
+				e := packCode(g, t, dstFile, pkgName, src)
 				if e != nil {
 					return e
 				}
@@ -71,8 +50,23 @@ func NewGenerateTemplates() *cobra.Command {
 		},
 	}
 	cmd.PersistentFlags().StringVarP(&outputDir, "out", "o", "", "output directory path")
+	cmd.PersistentFlags().String("package", "", "set target package name (default: directory name)")
 	cmd.PersistentFlags().StringVarP(&prefix, "prefix", "p", "", "generated file's prefix")
-	cmd.PersistentFlags().StringVar(&pkgName, "package", "", "set target package name (default: directory name)")
 	cmd.PersistentFlags().BoolVar(&includeTest, "include-test", false, "Include test file as target (default: false)")
+	cmd.PersistentFlags().StringVarP(&templatePath, "template", "t", "", "generated code's template")
 	return cmd
+}
+
+func targetFiles(srcFiles []string, includeTestFile bool) chan string {
+	ch := make(chan string)
+	go func() {
+		defer close(ch)
+		for _, p := range srcFiles {
+			if !includeTestFile && strings.HasSuffix(p, "_test.go") {
+				continue
+			}
+			ch <- p
+		}
+	}()
+	return ch
 }
