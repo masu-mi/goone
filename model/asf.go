@@ -106,11 +106,18 @@ func appendDecls(base *[]ast.Decl, imports *ast.GenDecl, items []ast.Decl) {
 	defer func() {
 		*base = b
 	}()
+	appended := map[string]struct{}{}
 	for _, d := range items {
 		if gd, ok := d.(*ast.GenDecl); ok {
 			if gd.Tok == token.IMPORT {
 				for _, i := range gd.Specs {
-					imports.Specs = append(imports.Specs, i)
+					if is, ok := i.(*ast.ImportSpec); ok {
+						importPath := is.Path.Value
+						if _, ok := appended[importPath]; !ok {
+							imports.Specs = append(imports.Specs, i)
+						}
+						appended[importPath] = struct{}{}
+					}
 				}
 				continue
 			}
